@@ -1,0 +1,386 @@
+# Sveltia CMS – Admin-Panel unter /admin
+# Doku: https://sveltiacms.app/en/docs
+# Die Felder hier müssen zu src/data/salon.ts (Seiteninhalte) und src/content.config.ts (お知らせ) passen.
+
+backend:
+  name: github
+  repo: Kwerki/luu-aroma-website
+  branch: main
+  # Login per GitHub-Zugangstoken (siehe ANLEITUNG.md). Lokal (http://127.0.0.1:4321/admin/)
+  # geht es ohne Login über „ローカルリポジトリで作業“ direkt im Projektordner.
+  auth_methods: [token]
+  commit_messages:
+    create: 'Neu: {{collection}} „{{slug}}“'
+    update: 'Aktualisiert: {{collection}} „{{slug}}“'
+    delete: 'Gelöscht: {{collection}} „{{slug}}“'
+    uploadMedia: 'Bild hochgeladen: {{path}}'
+    deleteMedia: 'Bild gelöscht: {{path}}'
+
+app_title: LUU – サイトの編集
+site_url: https://luuaroma.jp/
+
+# Fotos liegen in src/assets/photos, damit Astro sie beim Build verkleinert und als WebP ausliefert.
+# Im Inhalt steht der Pfad als „/photos/<datei>“; src/lib/photos.ts findet die Datei über den Namen.
+media_folder: src/assets/photos
+public_folder: /photos
+
+media_libraries:
+  default:
+    config:
+      max_file_size: 15000000
+      slugify_filename: true
+      # Hochgeladene Fotos werden automatisch verkleinert und als WebP gespeichert
+      transformations:
+        raster_image:
+          format: webp
+          quality: 82
+          width: 1800
+          height: 1800
+
+collections:
+  # ------------------------------------------------------------------ お知らせ
+  - name: news
+    label: お知らせ
+    label_singular: お知らせ
+    icon: campaign
+    folder: src/content/news
+    extension: md
+    format: frontmatter
+    create: true
+    # Dateiname aus dem Erstellzeitpunkt, weil japanische Titel keine lesbare Adresse ergeben
+    slug: '{{year}}-{{month}}-{{day}}-{{hour}}{{minute}}{{second}}'
+    preview_path: /news/{{slug}}/
+    sortable_fields:
+      fields: [date, title]
+      default: { field: date, direction: descending }
+    summary: '{{date | date("YYYY.MM.DD")}}　{{title}}{{draft | ternary("（下書き）", "")}}'
+    fields:
+      - { name: title, label: タイトル, widget: string }
+      - { name: date, label: 日付, widget: datetime, time_format: false, date_format: YYYY.MM.DD, format: YYYY-MM-DD }
+      - name: category
+        label: カテゴリ
+        widget: select
+        default: お知らせ
+        options: [お知らせ, 新メニュー, 新商品, イベント, 営業日]
+      - { name: image, label: 写真, widget: image, required: false }
+      - { name: imageAlt, label: 写真の説明, widget: string, required: false, hint: '写真に何が写っているか（任意）' }
+      - { name: body, label: 本文, widget: markdown }
+      - { name: draft, label: 下書き（まだ公開しない）, widget: boolean, default: false }
+
+  # ------------------------------------------------------------------ ページの内容
+  - name: seite
+    label: ページの内容
+    icon: web
+    files:
+      # ---------------------------------------------------- 基本情報
+      - name: kihon
+        label: 基本情報（住所・営業時間・連絡先）
+        file: src/content/seite/kihon.json
+        preview_path: /
+        fields:
+          - { name: name, label: サロン名, widget: string }
+          - { name: nameKana, label: サロン名（カナ）, widget: string }
+          - { name: tagline, label: 英字の小見出し, widget: string, hint: 'トップの一番上に表示（例：aromatherapy & ashitsubo）' }
+          - { name: postalCode, label: 郵便番号, widget: string, hint: '〒なしで（例：679-0212）' }
+          - { name: address, label: 住所, widget: string }
+          - { name: station, label: 最寄り駅, widget: string }
+          - { name: tel, label: 電話番号（サロン）, widget: string }
+          - { name: mobile, label: 携帯電話, widget: string, required: false, hint: '空欄にするとホームページに表示されません' }
+          - { name: line, label: LINE ID, widget: string }
+          - { name: lineUrl, label: LINEのリンク, widget: string }
+          - { name: instagram, label: Instagramのユーザー名, widget: string, hint: '@なしで' }
+          - { name: instagramUrl, label: Instagramのリンク, widget: string }
+          - { name: hours, label: 営業時間, widget: string }
+          - { name: closed, label: 定休日, widget: string }
+          - { name: parking, label: 駐車場, widget: string }
+          - { name: payment, label: お支払い方法, widget: string, hint: '例：現金・PayPay' }
+          - { name: beds, label: 設備, widget: string }
+          - { name: features, label: 特徴（トップのタグ）, widget: list, hint: '例：女性専用、完全個室' }
+          - { name: treatments, label: 施術の種類, widget: list }
+          - { name: lat, label: 地図の緯度, widget: number, value_type: float, hint: '地図のピンの位置。通常は変更不要です。' }
+          - { name: lon, label: 地図の経度, widget: number, value_type: float }
+          - { name: seoTitle, label: Google用タイトル, widget: string }
+          - { name: seoDescription, label: Google用の説明文, widget: text, hint: '検索結果に表示される1〜2文' }
+
+      # ---------------------------------------------------- トップ・コンセプト
+      - name: top
+        label: トップ・コンセプト
+        file: src/content/seite/top.json
+        preview_path: /
+        fields:
+          - name: hero
+            label: トップ（最初の画面）
+            widget: object
+            fields:
+              - { name: title, label: 大見出し, widget: text, hint: '改行するとそのまま改行されます' }
+              - { name: lead, label: 紹介文, widget: text }
+              - { name: photo, label: メイン写真, widget: image }
+              - { name: photoAlt, label: メイン写真の説明, widget: string, required: false }
+              - { name: subPhoto, label: 小さい写真, widget: image }
+              - { name: subPhotoAlt, label: 小さい写真の説明, widget: string, required: false }
+          - name: concept
+            label: コンセプト
+            widget: object
+            fields:
+              - { name: heading, label: 見出し, widget: string }
+              - { name: lead, label: リード文, widget: text }
+              - { name: body, label: 本文（段落ごと）, label_singular: 段落, widget: list, field: { name: text, label: 段落, widget: text } }
+              - name: highlights
+                label: おすすめポイント
+                label_singular: ポイント
+                widget: list
+                summary: '{{fields.title}}'
+                fields:
+                  - { name: photo, label: 写真, widget: image }
+                  - { name: title, label: 見出し, widget: string }
+                  - { name: text, label: 文章, widget: text }
+
+      # ---------------------------------------------------- メニュー
+      - name: menu
+        label: メニュー・料金
+        file: src/content/seite/menu.json
+        preview_path: /#menu
+        fields:
+          - { name: heading, label: 見出し, widget: string }
+          - name: groups
+            label: メニュー
+            label_singular: メニュー
+            widget: list
+            summary: '{{fields.title}}'
+            fields:
+              - { name: title, label: メニュー名, widget: string }
+              - { name: id, label: ページ内リンク用の英字, widget: string, required: false, hint: '通常は変更不要です' }
+              - { name: photo, label: 写真, widget: image }
+              - { name: points, label: 特徴, widget: list, required: false, hint: '例：アロマオイル使用' }
+              - { name: text, label: 説明, widget: text }
+              - name: items
+                label: 料金
+                label_singular: 料金
+                widget: list
+                summary: '{{fields.name}} {{fields.minutes}}分 {{fields.price}}円'
+                fields:
+                  - { name: name, label: 名前, widget: string }
+                  - { name: minutes, label: 時間（分）, widget: number, value_type: int }
+                  - { name: price, label: 料金（円）, widget: number, value_type: int }
+                  - { name: repeatPrice, label: 30日以内の料金（円）, widget: number, value_type: int, required: false }
+                  - { name: detail, label: 補足, widget: string, required: false }
+              - { name: note, label: 注記, widget: string, required: false }
+          - name: options
+            label: オプション
+            label_singular: オプション
+            widget: list
+            summary: '{{fields.name}} {{fields.minutes}}分 ＋{{fields.price}}円'
+            fields:
+              - { name: name, label: 名前, widget: string }
+              - { name: minutes, label: 時間（分）, widget: number, value_type: int }
+              - { name: price, label: 料金（円）, widget: number, value_type: int }
+              - { name: detail, label: 補足, widget: string, required: false }
+          - { name: notes, label: ご注意（メニューの下）, widget: list, field: { name: text, label: 文章, widget: text } }
+
+      # ---------------------------------------------------- アロマワーク
+      - name: aroma
+        label: アロマワーク・肉球バーム
+        file: src/content/seite/aroma.json
+        preview_path: /#aroma
+        fields:
+          - { name: title, label: 見出し, widget: string }
+          - { name: lead, label: 小見出し, widget: string }
+          - { name: text, label: 説明, widget: text }
+          - { name: photo, label: 写真, widget: image }
+          - { name: photoAlt, label: 写真の説明, widget: string, required: false }
+          - name: items
+            label: 料金
+            label_singular: 料金
+            widget: list
+            summary: '{{fields.name}} {{fields.detail}} {{fields.price}}'
+            fields:
+              - { name: name, label: 名前, widget: string }
+              - { name: detail, label: 容量・時間など, widget: string, required: false }
+              - { name: price, label: 料金, widget: string, hint: '例：1,300円、800円〜' }
+          - { name: note, label: 注記, widget: string, required: false }
+          - { name: goods, label: 商品のご案内, widget: text, required: false }
+          - name: pawBalm
+            label: 肉球バーム
+            widget: object
+            fields:
+              - { name: title, label: 商品名, widget: string }
+              - { name: lead, label: キャッチコピー, widget: string }
+              - { name: text, label: 説明, widget: text }
+              - { name: photo, label: 写真, widget: image }
+              - { name: photoAlt, label: 写真の説明, widget: string, required: false }
+              - { name: kinds, label: 種類, widget: list }
+              - name: items
+                label: 料金
+                label_singular: 料金
+                widget: list
+                summary: '{{fields.name}} {{fields.detail}} {{fields.price}}'
+                fields:
+                  - { name: name, label: 名前, widget: string }
+                  - { name: detail, label: 容量・時間など, widget: string, required: false }
+                  - { name: price, label: 料金, widget: string, hint: '例：1,300円、800円〜' }
+
+      # ---------------------------------------------------- 講座・イベント
+      - name: school
+        label: 講座・イベント
+        file: src/content/seite/school.json
+        preview_path: /#school
+        fields:
+          - { name: heading, label: 見出し, widget: string }
+          - { name: schoolName, label: スクール名, widget: string, required: false, hint: '講座の上に表示（例：アロマスクールLUU）' }
+          - { name: lead, label: スクールの紹介文, widget: text, required: false }
+          - name: courses
+            label: 講座
+            label_singular: 講座
+            widget: list
+            summary: '{{fields.title}}'
+            fields:
+              - { name: title, label: 講座名, widget: string }
+              - { name: photo, label: 写真, widget: image }
+              - { name: photoAlt, label: 写真の説明, widget: string, required: false }
+              - { name: text, label: 説明, widget: text }
+              - name: facts
+                label: 概要（時間・受講料など）
+                label_singular: 項目
+                widget: list
+                summary: '{{fields.label}}：{{fields.value}}'
+                fields:
+                  - { name: label, label: 項目, widget: string }
+                  - { name: value, label: 内容, widget: string }
+              - { name: perks, label: 受講特典, widget: list, required: false }
+          - { name: notes, label: ご注意（講座の下）, widget: list, field: { name: text, label: 文章, widget: text } }
+          - name: instagram
+            label: 講座専用Instagram
+            widget: object
+            required: false
+            fields:
+              - { name: text, label: 案内文, widget: string }
+              - { name: account, label: ユーザー名, widget: string, hint: '@なしで（例：school_chizu）' }
+              - { name: url, label: リンク, widget: string }
+          - name: events
+            label: イベント・出張
+            widget: object
+            fields:
+              - { name: title, label: 見出し, widget: string }
+              - { name: photo, label: 写真, widget: image }
+              - { name: photoAlt, label: 写真の説明, widget: string, required: false }
+              - { name: text, label: 説明, widget: text }
+              - name: items
+                label: 料金
+                label_singular: 料金
+                widget: list
+                summary: '{{fields.name}} {{fields.detail}} {{fields.price}}'
+                fields:
+                  - { name: name, label: 名前, widget: string }
+                  - { name: detail, label: 容量・時間など, widget: string, required: false }
+                  - { name: price, label: 料金, widget: string, hint: '例：1,300円、800円〜' }
+              - { name: more, label: 補足の文章, widget: text, required: false }
+              - { name: note, label: 注記（Instagramへのリンク付き）, widget: string, required: false }
+          - { name: contact, label: お問い合わせの案内, widget: text }
+
+      # ---------------------------------------------------- サロンのこだわり
+      - name: kodawari
+        label: サロンのこだわり
+        file: src/content/seite/kodawari.json
+        preview_path: /#salon
+        fields:
+          - { name: heading, label: 見出し, widget: string }
+          - name: photos
+            label: 写真と説明
+            label_singular: 写真
+            widget: list
+            summary: '{{fields.title}}'
+            fields:
+              - { name: photo, label: 写真, widget: image }
+              - { name: title, label: 見出し, widget: string }
+              - { name: text, label: 文章, widget: text }
+
+      # ---------------------------------------------------- スタッフ
+      - name: staff
+        label: スタッフ
+        file: src/content/seite/staff.json
+        preview_path: /#staff
+        fields:
+          - { name: heading, label: 見出し, widget: string }
+          - { name: photo, label: 写真, widget: image }
+          - { name: name, label: 名前, widget: string }
+          - { name: kana, label: 名前（カナ）, widget: string }
+          - { name: role, label: 役職, widget: string }
+          - { name: messageTitle, label: メッセージの見出し, widget: string }
+          - { name: message, label: メッセージ, widget: text }
+          - name: facts
+            label: プロフィール
+            label_singular: 項目
+            widget: list
+            summary: '{{fields.label}}：{{fields.value}}'
+            fields:
+              - { name: label, label: 項目, widget: string }
+              - { name: value, label: 内容, widget: string }
+
+      # ---------------------------------------------------- アクセス
+      - name: access
+        label: アクセス・道案内
+        file: src/content/seite/access.json
+        preview_path: /#access
+        fields:
+          - { name: heading, label: 見出し, widget: string }
+          - { name: photo, label: 外観の写真, widget: image }
+          - { name: photoAlt, label: 写真の説明, widget: string, required: false }
+          - { name: landmark, label: 目印・送迎, widget: text }
+          - { name: parking, label: 駐車場の案内, widget: text }
+          - { name: routeTitle, label: 道案内の見出し, widget: string }
+          - name: route
+            label: 道案内
+            label_singular: ステップ
+            widget: list
+            summary: '{{fields.text}}'
+            fields:
+              - { name: photo, label: 写真, widget: image, required: false, hint: '写真がない場合は「写真準備中」と表示されます' }
+              - { name: text, label: 文章, widget: text }
+
+      # ---------------------------------------------------- よくある質問
+      - name: faq
+        label: よくある質問（Q&A）
+        file: src/content/seite/faq.json
+        preview_path: /#faq
+        fields:
+          - { name: heading, label: 見出し, widget: string }
+          - name: items
+            label: 質問と回答
+            label_singular: 質問
+            widget: list
+            summary: '{{fields.question}}'
+            hint: '並べ替えはドラッグで。質問がない場合、このコーナーはホームページに表示されません。'
+            fields:
+              - { name: question, label: 質問, widget: string }
+              - { name: answer, label: 回答, widget: text, hint: '改行するとそのまま改行されます' }
+
+      # ---------------------------------------------------- ご予約
+      - name: reserve
+        label: ご予約・お問い合わせ
+        file: src/content/seite/reserve.json
+        preview_path: /#reserve
+        fields:
+          - { name: heading, label: 見出し, widget: string }
+          - { name: lead, label: 案内文, widget: text }
+          - { name: notes, label: ご注意, widget: list, field: { name: text, label: 文章, widget: text } }
+
+  # ------------------------------------------------------------------ デザイン
+  - name: design
+    label: デザイン
+    icon: palette
+    files:
+      - name: font
+        label: フォント
+        file: src/content/seite/design.json
+        preview_path: /
+        fields:
+          - name: font
+            label: フォント
+            widget: select
+            default: standard
+            hint: '現在選択されているフォントがホームページに使われています。変更は保存後2〜3分で反映されます。'
+            options:
+              - { label: '標準（Zen Kaku Gothic New ＋ しっぽり明朝）', value: standard }
+              - { label: 'やさしい丸文字（Zen Maru Gothic）', value: maru }
+              - { label: '上品な明朝（Noto Sans JP ＋ Zen Old Mincho）', value: mincho }
+              - { label: 'すっきりゴシック（M PLUS 1p）', value: modern }
